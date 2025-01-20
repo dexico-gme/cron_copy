@@ -5,6 +5,7 @@ import logging
 import queue
 import asyncio
 import configparser
+import csv
 
 config = configparser.ConfigParser()
 config.read('config/config.ini')
@@ -32,13 +33,23 @@ logging.basicConfig(level=logging.DEBUG,
 '''paths stored in config.py, change path variables for project'''
 raid_path = config['Paths']['raid_path']
 vfx_srv_path = config['Paths']['vfx_srv_path']
+csv_path = config['Paths']['csv_path']
 async def size_check(input_path, output_path):
-
     input_size = 0
     output_size = 0
+    #write csv
+    try:
+        if os.path.isfile(csv_path):
+            pass
+            
+    except:
+        with open(f'{csv_path}', 'w', newline='') as csvfile:
+            fieldnames = ['input folder','input size', 'output_folder' 'output size']
+            spamwriter = csv.writer(csvfile, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            spamwriter.writerow(fieldnames)
 
     for path in (sorted(glob.glob(f'{input_path}'))):
-                size = 0
+                input_size = 0
                 for p, dirs, files in os.walk(path):
                     for f in files:
                         if 'exr-sv.tmp' in f:
@@ -47,14 +58,15 @@ async def size_check(input_path, output_path):
                             pass
                         else:
                             fp = os.path.join(p, f)
-                            size += os.path.getsize(fp)
+                            input_size += os.path.getsize(fp)
                 # raid_pkg_path_list.append(path)
                 # raid_pkg_name_list.append(os.path.basename(path))
                 logger.info(f'input_path: {input_path}')
-                logger.info(f'input path: {round((size/1024/1024/1024),2)}')
+                logger.info(f'input path: {round((input_size/1024/1024/1024),2)}')
 
+    '''output path size check'''
     for path in (sorted(glob.glob(f'{output_path}'))):
-                size = 0
+                output_size = 0
                 for p, dirs, files in os.walk(path):
                     for f in files:
                         if 'exr-sv.tmp' in f:
@@ -63,11 +75,17 @@ async def size_check(input_path, output_path):
                             pass
                         else:
                             fp = os.path.join(p, f)
-                            size += os.path.getsize(fp)
+                            output_size += os.path.getsize(fp)
                 # raid_pkg_path_list.append(path)
                 # raid_pkg_name_list.append(os.path.basename(path))
                 logger.info(f'input_path: {output_path}')
-                logger.info(f'output path: {round((size/1024/1024/1024),2)}')
+                logger.info(f'output path: {round((output_size/1024/1024/1024),2)}')
+    
+    with open(f'{csv_path}', 'a', newline='') as csvfile:
+        fieldnames = ['input folder','input size', 'output_folder' 'output size']
+        spamwriter = csv.writer(csvfile, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        spamwriter.writerow([input_path, input_size, output_path, output_size])
+
 
 async def until_ready(q):
     """compare file sizes whilst the new package lands, once the filesize stops increasing then copy the package to the raid"""
